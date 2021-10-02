@@ -15,6 +15,11 @@ namespace QlikSDKConnect
 {
     class Program
     {
+        public class ColumnList
+        {
+            public string ColumnName { get; set; }
+            public Type ColumnType { get; set; }
+        }
         public class FilterBlock
         {
             public IList<FilterField> Fields { get; set; }
@@ -117,28 +122,35 @@ namespace QlikSDKConnect
 
                 dynamic jsonLayout = JsonConvert.DeserializeObject(qlayout.ToString());
                 //Get header from  qDimensionInfo и qMeasureInfo
-                List<string> columnList = new List<string>();
+                List<ColumnList> columnList = new List<ColumnList>();
                 foreach (var qDim in jsonLayout.qHyperCube.qDimensionInfo)
                 {
-                    columnList.Add(Convert.ToString(qDim.qFallbackTitle));
+                    ColumnList cl = new ColumnList();
+                    cl.ColumnName = Convert.ToString(qDim.qFallbackTitle);
+                    cl.ColumnType = typeof(string);
+                    columnList.Add(cl);
                 }
                 foreach (var qMes in jsonLayout.qHyperCube.qMeasureInfo)
                 {
-                    columnList.Add(Convert.ToString(qMes.qFallbackTitle));
+                    ColumnList cl = new ColumnList();
+                    cl.ColumnName = Convert.ToString(qMes.qFallbackTitle);
+                    cl.ColumnType = typeof(double);
+                    columnList.Add(cl);
                 }
 
 
                 //Get column order of HyperCube 
                 List<int> qColumnOrder = jsonLayout.qHyperCube.qColumnOrder.ToObject<List<int>>();
-                List<string> dtColumnList = qColumnOrder.Select(i => columnList[i]).ToList();
+                List<string> dtColumnList = qColumnOrder.Select(i => columnList[i].ColumnName).ToList();
+                List<Type> dtColumnListType = qColumnOrder.Select(i => columnList[i].ColumnType).ToList();
 
                 //Now creating DataTable and creating columns
                 System.Data.DataTable dt = new System.Data.DataTable();
-                foreach(string column in dtColumnList)
+                for(int i=0; i<dtColumnList.Count; i++)
                 {
-                    dt.Columns.Add(column);
+                    dt.Columns.Add(dtColumnList[i], dtColumnListType[i]);
                 }
-     
+    
 
                 var pager = qobject.GetAllHyperCubePagers().First();
                 var allPages = pager.IteratePages(new[] { new NxPage { Width = pager.NumberOfColumns, Height = 100 } }, Pager.Next).Select(pageSet => pageSet.Single());
@@ -150,9 +162,17 @@ namespace QlikSDKConnect
                     int columnIndex = 0;
                     foreach(var column in dt.Columns)
                     {
-                        if(data[columnIndex].State.ToString() == "L"  && data[columnIndex].Num.ToString() != "NaN" )
+                        if(data[columnIndex].State.ToString() == "LOCKED")
                         {
-                            row[columnIndex] = data[columnIndex].Num;
+                            if(data[columnIndex].Num.ToString() != "NaN")
+                            {
+                                row[columnIndex] = data[columnIndex].Num;
+                            }
+                            else
+                            {
+                                row[columnIndex] = DBNull.Value;
+                            }
+                            
                         }
                         else
                         {
@@ -198,6 +218,7 @@ namespace QlikSDKConnect
                     // to do: format datetime values before printing
                     for (var j = 0; j < tbl.Columns.Count; j++)
                     {
+                        workSheet.Cells[i + 2, j + 1].NumberFormat = tbl.Columns[j].DataType == typeof(string) ? "@" : "0.00";
                         workSheet.Cells[i + 2, j + 1] = tbl.Rows[i][j];
                     }
                 }
