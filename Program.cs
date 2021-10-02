@@ -30,7 +30,7 @@ namespace QlikSDKConnect
         }
         static void Main(string[] args)
         {
-            //Берем основные данные из файла конфигурации
+            //Loading main conf info from app.config
             Console.OutputEncoding = Encoding.UTF8;
             string qsUri = ConfigurationManager.AppSettings["QlikSenseUri"];
             string qsCertPath = ConfigurationManager.AppSettings["QlikSenseCertPath"];
@@ -116,7 +116,7 @@ namespace QlikSDKConnect
 
 
                 dynamic jsonLayout = JsonConvert.DeserializeObject(qlayout.ToString());
-                //Получить заголовки по очереди от qDimensionInfo и qMeasureInfo
+                //Get header from  qDimensionInfo и qMeasureInfo
                 List<string> columnList = new List<string>();
                 foreach (var qDim in jsonLayout.qHyperCube.qDimensionInfo)
                 {
@@ -128,11 +128,11 @@ namespace QlikSDKConnect
                 }
 
 
-                //Получить порядок столбцев 
+                //Get column order of HyperCube 
                 List<int> qColumnOrder = jsonLayout.qHyperCube.qColumnOrder.ToObject<List<int>>();
                 List<string> dtColumnList = qColumnOrder.Select(i => columnList[i]).ToList();
 
-                //Создаем заголовки таблиц
+                //Now creating DataTable and creating columns
                 System.Data.DataTable dt = new System.Data.DataTable();
                 foreach(string column in dtColumnList)
                 {
